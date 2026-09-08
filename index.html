@@ -15,7 +15,18 @@
   <style>
     html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     #map { height: 100vh; width: 100vw; z-index: 1; background: #e2e8f0; }
+    
     .custom-pin { background: none; border: none; }
+    
+    /* Filtre CSS pour donner un style minimaliste (sans couleurs vives) à OpenStreetMap */
+    .leaflet-tile { 
+      filter: grayscale(100%) opacity(0.8) contrast(120%); 
+    }
+    
+    /* Si tu préfères un style sombre, utilise cette ligne à la place de la précédente :
+    .leaflet-tile { filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(95%); } 
+    */
+
     .leaflet-control-attribution { font-size: 9px; padding: 1px 5px; background: rgba(255,255,255,0.55); opacity: 0.75; }
   </style>
 </head>
@@ -163,28 +174,21 @@
 
     // --- INITIALISATION DE LA CARTE ---
     function initMap() {
-      // Centrage par défaut sur Grenoble (Ense3) au cas où le GPS échoue
-      map = L.map('map', { zoomControl: false, maxZoom: 20 }).setView([45.201, 5.714], 13);
+      // Centrage par défaut sur Grenoble
+      map = L.map('map', { zoomControl: false, maxZoom: 19 }).setView([45.201, 5.714], 14);
 
-      // NOUVELLE CARTE : OpenStreetMap (très détaillé)
+      // Fond de carte OpenStreetMap standard
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
-        maxZoom: 20
+        maxZoom: 19
       }).addTo(map);
-
-      /* Autre option (Esri World Street Map) - Décommente si tu préfères :
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri',
-        maxZoom: 20
-      }).addTo(map);
-      */
 
       map.attributionControl.setPrefix(false);
       markersLayer = L.layerGroup().addTo(map);
 
       // Clic sur la carte = placer un pin manuellement
       map.on('click', (e) => {
-        userCoords = { lat: e.latlng.lat, lng: e.latlng.lng }; // Met à jour la position temporaire
+        userCoords = { lat: e.latlng.lat, lng: e.latlng.lng }; 
         openModal(e.latlng.lat, e.latlng.lng);
       });
 
@@ -204,14 +208,13 @@
 
       showToast(center ? "Recherche de position..." : "Synchronisation GPS...");
 
-      // On ajoute un timeout raisonnable et on ne force pas la haute précision si ça échoue
       const geoOptions = { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 };
 
       navigator.geolocation.getCurrentPosition(
         (pos) => handlePositionSuccess(pos, center),
         (err) => {
           console.warn("Échec HighAccuracy, tentative standard...", err);
-          // Fallback : tentative sans "HighAccuracy" (souvent le problème sur mobile)
+          // Fallback : tentative sans "HighAccuracy"
           navigator.geolocation.getCurrentPosition(
             (pos) => handlePositionSuccess(pos, center),
             (err2) => {
@@ -258,7 +261,6 @@
       if (userCoords) {
         openModal(userCoords.lat, userCoords.lng);
       } else {
-        // Au lieu de tourner dans le vide, on invite l'utilisateur à pointer sur la carte
         showToast("GPS indisponible. Cliquez directement sur la carte pour placer l'objet !");
       }
     }
