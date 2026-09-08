@@ -18,14 +18,10 @@
     
     .custom-pin { background: none; border: none; }
     
-    /* Filtre CSS pour donner un style minimaliste (sans couleurs vives) à OpenStreetMap */
+    /* Filtre CSS pour fond de carte minimaliste clair */
     .leaflet-tile { 
       filter: grayscale(100%) opacity(0.8) contrast(120%); 
     }
-    
-    /* Si tu préfères un style sombre, utilise cette ligne à la place de la précédente :
-    .leaflet-tile { filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(95%); } 
-    */
 
     .leaflet-control-attribution { font-size: 9px; padding: 1px 5px; background: rgba(255,255,255,0.55); opacity: 0.75; }
   </style>
@@ -51,10 +47,6 @@
     <div class="pointer-events-auto flex items-center gap-2">
       <button onclick="toggleTimeline()" id="btn-timeline" class="bg-white/95 backdrop-blur-md hover:bg-slate-100 text-slate-800 px-3 py-2 rounded-2xl shadow-lg border border-slate-200/60 text-xs font-bold flex items-center gap-1.5 transition active:scale-95" title="Historique temporel">
         ⏳ <span class="hidden sm:inline">Évolution</span>
-      </button>
-
-      <button onclick="toggleAdminModal()" id="btn-admin" class="bg-white/95 backdrop-blur-md hover:bg-slate-100 text-slate-800 px-3 py-2 rounded-2xl shadow-lg border border-slate-200/60 text-xs font-bold flex items-center gap-1.5 transition active:scale-95">
-        <span id="admin-icon">🔒</span> <span id="admin-label" class="hidden sm:inline">Admin</span>
       </button>
 
       <button onclick="fetchPins()" class="bg-white/95 backdrop-blur-md hover:bg-slate-100 text-slate-800 p-2 rounded-2xl shadow-lg border border-slate-200/60 text-xs font-bold transition active:scale-95" title="Rafraîchir les données">
@@ -96,7 +88,7 @@
   <div id="signal-modal" class="hidden fixed inset-0 z-[2000] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl max-h-[92vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-3">
-        <h3 class="font-bold text-slate-800 text-base">Signaler un objet trouvé</h3>
+        <h3 class="font-bold text-slate-800 text-base">Signaler un objet</h3>
         <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200">✕</button>
       </div>
 
@@ -108,7 +100,8 @@
 
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1">Photo *</label>
-          <input type="file" id="photo-input" accept="image/*" capture="environment" required class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+          <!-- Suppression de capture="environment" pour forcer le choix Appareil Photo / Galerie -->
+          <input type="file" id="photo-input" accept="image/*" required class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
           <div id="preview-container" class="mt-2 hidden">
             <img id="image-preview" src="" alt="Aperçu" class="h-32 w-full object-cover rounded-xl border border-slate-200">
           </div>
@@ -126,39 +119,14 @@
     </div>
   </div>
 
-  <!-- MODAL : Authentification Administrateur -->
-  <div id="admin-modal" class="hidden fixed inset-0 z-[2000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl space-y-4">
-      <div class="text-center">
-        <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-xl mb-2">🔑</div>
-        <h3 class="font-bold text-slate-800 text-base">Espace Administrateur</h3>
-        <p class="text-xs text-slate-500">Gérez les statuts et supprimez des marqueurs.</p>
-      </div>
-      <div id="admin-login-view" class="space-y-3">
-        <input type="password" id="admin-pass" placeholder="Mot de passe" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
-        <button onclick="loginAdmin()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs transition">
-          Se connecter
-        </button>
-      </div>
-      <div id="admin-logged-view" class="hidden space-y-3 text-center">
-        <p class="text-xs text-emerald-600 font-semibold">✓ Mode administrateur actif</p>
-        <button onclick="logoutAdmin()" class="w-full bg-rose-50 text-rose-600 font-bold py-2.5 rounded-xl text-xs hover:bg-rose-100 transition">
-          Déconnexion
-        </button>
-      </div>
-      <button onclick="toggleAdminModal()" class="w-full text-slate-400 text-xs hover:text-slate-600 pt-1">Fermer</button>
-    </div>
-  </div>
-
   <script>
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby6y0RK965ypZp_CGhoMEZHWZOEtnipAR_05zVRvetz6j0Szcx9IF45z0BMoBPmyBD2/exec";
     const FULLSCREEN_URL = "https://barochebenjamin-cmd.github.io/objetolinp/";
 
-    let adminPasswordEntered = null;
     let map, markersLayer, userMarker = null, userAccuracyCircle = null;
     let userCoords = null; 
     let compressedPhotoBase64 = null;
-    let allItems = [], isAdmin = false, playInterval = null;
+    let allItems = [], playInterval = null;
 
     function escapeHtml(str) {
       if (!str) return "";
@@ -174,19 +142,16 @@
 
     // --- INITIALISATION DE LA CARTE ---
     function initMap() {
-      // Centrage par défaut sur Grenoble
       map = L.map('map', { zoomControl: false, maxZoom: 19 }).setView([45.201, 5.714], 14);
 
-      // Fond de carte OpenStreetMap standard
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
+        attribution: '© OpenStreetMap',
         maxZoom: 19
       }).addTo(map);
 
       map.attributionControl.setPrefix(false);
       markersLayer = L.layerGroup().addTo(map);
 
-      // Clic sur la carte = placer un pin manuellement
       map.on('click', (e) => {
         userCoords = { lat: e.latlng.lat, lng: e.latlng.lng }; 
         openModal(e.latlng.lat, e.latlng.lng);
@@ -199,7 +164,7 @@
       fetchPins();
     }
 
-    // --- GÉOLOCALISATION CORRIGÉE ---
+    // --- GÉOLOCALISATION ---
     function locateUser(center = true) {
       if (!navigator.geolocation) {
         showToast("GPS non supporté. Cliquez sur la carte.");
@@ -213,14 +178,9 @@
       navigator.geolocation.getCurrentPosition(
         (pos) => handlePositionSuccess(pos, center),
         (err) => {
-          console.warn("Échec HighAccuracy, tentative standard...", err);
-          // Fallback : tentative sans "HighAccuracy"
           navigator.geolocation.getCurrentPosition(
             (pos) => handlePositionSuccess(pos, center),
-            (err2) => {
-              console.error("GPS bloqué ou refusé :", err2);
-              showToast("GPS introuvable. Cliquez sur la carte pour pinner.");
-            },
+            (err2) => { showToast("GPS introuvable. Cliquez sur la carte pour pinner."); },
             { enableHighAccuracy: false, timeout: 5000, maximumAge: 10000 }
           );
         },
@@ -275,7 +235,6 @@
         renderPins(allItems);
         document.getElementById('items-count').innerText = `${allItems.length} trouvaille(s)`;
       } catch (err) {
-        console.error(err);
         document.getElementById('items-count').innerText = "Erreur réseau";
       }
     }
@@ -298,6 +257,7 @@
         const safeId = escapeHtml(item.id);
         const safeDesc = escapeHtml(item.desc);
 
+        // Affichage public avec les actions de gestion incluses pour tout le monde
         let popupHtml = `
           <div class="p-1 min-w-[210px] text-slate-800">
             ${item.photoUrl ? `<img src="${escapeHtml(item.photoUrl)}" class="w-full h-32 object-cover rounded-xl mb-2 shadow-sm" loading="lazy" />` : ''}
@@ -308,24 +268,69 @@
               <span class="text-[10px] text-slate-400">${dateStr}</span>
             </div>
             <p class="text-xs font-medium text-slate-700 mb-2">${safeDesc}</p>
-        `;
-
-        if (isAdmin) {
-          popupHtml += `
+            
             <div class="border-t border-slate-100 pt-2 grid grid-cols-2 gap-1.5">
-              <button onclick="adminToggleStatus('${safeId}', '${item.status}')" class="py-1 px-2 rounded-lg text-[10px] font-bold ${isCollected ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">
-                ${isCollected ? 'Remettre' : 'Marquer pris'}
+              <button onclick="toggleItemStatus('${safeId}', '${item.status}')" class="py-1 px-2 rounded-lg text-[10px] font-bold transition-colors ${isCollected ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}">
+                ${isCollected ? 'Remettre en jeu' : 'Marquer pris'}
               </button>
-              <button onclick="adminDeleteItem('${safeId}')" class="py-1 px-2 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-600 hover:bg-rose-100">
+              <button onclick="deleteItem('${safeId}')" class="py-1 px-2 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">
                 Supprimer
               </button>
             </div>
-          `;
-        }
-        popupHtml += `</div>`;
+          </div>
+        `;
+
         marker.bindPopup(popupHtml);
         markersLayer.addLayer(marker);
       });
+    }
+
+    // --- GESTION PUBLIQUE (SANS MDP) ---
+    async function deleteItem(id) {
+      if (!confirm("Confirmer la suppression définitive de cet objet ?")) return;
+      map.closePopup(); 
+      showToast("Suppression en cours...");
+      try {
+        const res = await fetch(GOOGLE_SCRIPT_URL, { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'text/plain' }, 
+          body: JSON.stringify({ action: "delete", id: id }) 
+        });
+        const json = await res.json();
+        if (json.status === "deleted" || json.status === "success") {
+          allItems = allItems.filter(i => i.id !== id);
+          renderPins(allItems); 
+          showToast("Objet supprimé de la carte.");
+        } else {
+          throw new Error("Erreur serveur");
+        }
+      } catch (e) { 
+        showToast("Erreur lors de la suppression."); 
+      }
+    }
+
+    async function toggleItemStatus(id, currentStatus) {
+      const newStatus = currentStatus === "collected" ? "pending" : "collected";
+      map.closePopup();
+      showToast("Mise à jour du statut...");
+      try {
+        const res = await fetch(GOOGLE_SCRIPT_URL, { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'text/plain' }, 
+          body: JSON.stringify({ action: "toggleStatus", id: id, status: newStatus }) 
+        });
+        const json = await res.json();
+        if (json.status === "updated" || json.status === "success") {
+          const target = allItems.find(i => i.id === id);
+          if (target) target.status = newStatus;
+          renderPins(allItems); 
+          showToast("Statut mis à jour !");
+        } else {
+          throw new Error("Erreur serveur");
+        }
+      } catch (e) { 
+        showToast("Erreur lors de la mise à jour."); 
+      }
     }
 
     // --- COMPRESSION D'IMAGE ET FORMULAIRE ---
@@ -376,13 +381,12 @@
           body: JSON.stringify(payload)
         });
         const json = await res.json();
-        if (json.status !== "success") throw new Error(json.message || "Échec");
+        if (json.status !== "success") throw new Error("Échec");
 
         showToast("Objet épinglé avec succès !");
         closeModal();
         setTimeout(fetchPins, 1200);
       } catch (err) {
-        console.error(err);
         showToast("Erreur lors de l'enregistrement.");
       } finally {
         btn.disabled = false;
@@ -441,62 +445,6 @@
           onTimelineChange(slider.value);
         }, 500);
       }
-    }
-
-    // --- GESTION DU COMPTE ADMINISTRATEUR ---
-    function toggleAdminModal() { document.getElementById('admin-modal').classList.toggle('hidden'); }
-
-    async function loginAdmin() {
-      const p = document.getElementById('admin-pass').value;
-      if (!p) return;
-      try {
-        const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: "checkAdmin", adminPassword: p }) });
-        const json = await res.json();
-        if (json.status === "success") {
-          isAdmin = true; adminPasswordEntered = p;
-          document.getElementById('admin-login-view').classList.add('hidden');
-          document.getElementById('admin-logged-view').classList.remove('hidden');
-          document.getElementById('admin-icon').innerText = "🔓";
-          document.getElementById('admin-label').innerText = "Admin (Actif)";
-          showToast("Mode admin activé.");
-          renderPins(allItems); toggleAdminModal();
-        } else alert("Mot de passe administrateur incorrect.");
-      } catch (err) { alert("Erreur de connexion."); }
-    }
-
-    function logoutAdmin() {
-      isAdmin = false; adminPasswordEntered = null;
-      document.getElementById('admin-login-view').classList.remove('hidden');
-      document.getElementById('admin-logged-view').classList.add('hidden');
-      document.getElementById('admin-pass').value = '';
-      document.getElementById('admin-icon').innerText = "🔒";
-      document.getElementById('admin-label').innerText = "Admin";
-      renderPins(allItems); toggleAdminModal(); showToast("Déconnexion réussie.");
-    }
-
-    async function adminDeleteItem(id) {
-      if (!confirm("Confirmer la suppression définitive ?")) return;
-      map.closePopup(); showToast("Suppression en cours...");
-      try {
-        const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: "delete", id, adminPassword: adminPasswordEntered }) });
-        const json = await res.json();
-        if (json.status !== "deleted") throw new Error("Refusé");
-        allItems = allItems.filter(i => i.id !== id);
-        renderPins(allItems); showToast("Objet supprimé.");
-      } catch (e) { showToast("Erreur de suppression."); }
-    }
-
-    async function adminToggleStatus(id, currentStatus) {
-      const newStatus = currentStatus === "collected" ? "pending" : "collected";
-      map.closePopup();
-      try {
-        const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: "toggleStatus", id, status: newStatus, adminPassword: adminPasswordEntered }) });
-        const json = await res.json();
-        if (json.status !== "updated") throw new Error("Refusé");
-        const target = allItems.find(i => i.id === id);
-        if (target) target.status = newStatus;
-        renderPins(allItems); showToast("Statut mis à jour !");
-      } catch (e) { showToast("Erreur mise à jour."); }
     }
 
     // --- MODAL HELPERS ---
